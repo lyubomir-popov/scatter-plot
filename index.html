@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<!-- saved from url=(0062)https://bl.ocks.org/sebg/raw/6f7f1dd55e0c52ce5ee0dac2b2769f4b/ -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style>
+
+	body {
+	  font: 10px sans-serif;
+    background-color: #222;
+	}
+
+	.axis path,
+	.axis line {
+	  fill: none;
+	  stroke: #cdcdcd;
+	  shape-rendering: crispEdges;
+	}
+
+	.dot {
+	  stroke: none;
+	}
+
+  text {
+    fill: rgba(255,255,255,.33);  
+  }
+  
+  .bar {
+    fill: rgba(255,255,255, 0.05);
+  }
+
+</style>
+</head><body>
+<script src="./d3.v4.min.js"></script>
+<script src="https://d3js.org/d3-color.v1.min.js"></script>
+<script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+<script>
+let margin = {top: 16, right: 40, bottom: 40, left: 40},
+    width = 960 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+
+let x = d3.scaleTime()
+          .range([0, width]);
+
+let y = d3.scaleLinear()
+          .range([height, 0]);
+
+let color = d3.scaleOrdinal(d3.schemePaired);
+
+let xAxis = d3.axisBottom(x)
+              .scale(x)
+              .tickSize(6, 0)
+              .tickFormat(d3.timeFormat("%m/%Y"));
+
+let yAxis = d3.axisLeft(y);
+
+let svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+
+// scatter plot
+d3.tsv("likes.tsv", function(error, data) {
+  if (error) throw error;
+
+  data.forEach(function(d) {
+    d.value = +d.value;
+    if(isNaN(d.value)) {
+      d.value = 0;
+    }
+  });
+
+  let byDate = {};
+  data.forEach(function(d) {
+    if(!byDate[d.date]) byDate[d.date] = [];
+    byDate[d.date].push(d);
+  });
+  Object.keys(byDate).forEach(function(k) {
+    data.push({
+      page: 'Average',
+      date: k,
+      value: byDate[k].reduce((accum, current) => accum + current.value, 0) / byDate[k].length
+    });
+  });
+
+  data.forEach(function(d) {
+    d.date = new Date(d.date);
+    });
+
+  // generate histogram csv
+  let [start, end] = d3.extent(data, function(d) { return d.date; }).map((s) => new Date(s));
+  const dayMs = 86400 * 1000,
+        granularity = 2;
+
+  let histoData = [];
+
+  for(let date = start; date < end; date = new Date(date.getTime() + dayMs * granularity)) {
+    histoData.push(Math.floor(Math.random() * 100));
+  }
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+  y.domain(d3.extent(data, function(d) { return d.value; })).nice();
+  y.domain(d3.extent(data, function(d) { return d.value; })).nice();
+  y.domain([.35, .7]);
+
+  let xh = d3.scaleLinear().range([0, width]),
+      yh = d3.scaleLinear().rangeRound([height, 0]);
+
+  xh.domain([0, histoData.length]);
+  yh.domain([0, d3.max(histoData, function(d) { return d * 2; })]);
+
+  let yAxisRight = d3.axisRight(yh);
+
+// histogram
+ svg.append('g').attr('class', 'histo')
+    .selectAll(".bar")
+    .data(histoData)
+    .enter().append("rect")
+      .attr("class", "bar")
+      .attr("x", function(d, i) { return xh(i); })
+      .attr("y", (d) => yh(d))
+      .attr("width", Math.floor(width / histoData.length))
+      .attr("height", function(d) { return height - yh(d); });
+
+// x axis
+  svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+      .select(".domain").remove()
+    .append("text")
+      .attr("class", "label")
+      .attr("x", width)
+      .attr("y", -6)
+      .style("text-anchor", "end")
+      .text("Date");
+
+//y axis left
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+      .select(".domain").remove()
+    .append("text")
+      .attr("class", "label")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Value")
+
+//y axis right
+  svg.append("g")
+      .attr("class", "y axis y-axis--right")
+      .attr("transform", "translate( " + width + ", 0 )")
+      .call(yAxisRight)
+      .select(".domain").remove()
+    .append("text")
+      .attr("class", "label")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Number of votes")
+
+// scatter plot
+  svg.selectAll(".dot")
+      .data(data)
+    .enter().append("circle")
+      .attr("class", "dot")
+      .attr("r", d => d.page === 'Average' ? 7 : 3.5)
+      .attr("cx", function(d) { return x(d.date); })
+      .attr("cy", function(d) { return y(d.value); })
+      .style("fill", function(d) { return  d.page === 'Average' ? '#fff' : color(d.page); });
+
+  let legendColumnWidth = 96;
+// legend
+  let legend = svg.selectAll(".legend")
+      .data(color.domain())
+    .enter().append("g")
+      .attr("class", "legend")
+      .attr("transform", function(d, i) { return "translate(" + legendColumnWidth * i + ", 0)"; });
+
+  legend.append("rect")
+      .attr("x", 16)
+      .attr("width", 16)
+      .attr("height", 4)
+      .style("fill", color);
+
+  legend.append("text")
+      .attr("x", 40)
+      .attr("y", 2)
+      .attr("dy", ".35em")
+      // .style("text-anchor", "end")
+      .text(function(d) { return d; });
+
+});
+
+function customYAxis(g) {
+  g.call(yAxis);
+  g.select(".domain").remove();
+  // g.selectAll(".tick:not(:first-of-type) line").attr("stroke", "#777").attr("stroke-dasharray", "2,2");
+  // g.selectAll(".tick text").attr("x", 4).attr("dy", -4);
+}
+</script></body></html>
