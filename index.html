@@ -91,25 +91,28 @@ d3.tsv("likes.tsv", function(error, data) {
   // generate histogram csv
   let [start, end] = d3.extent(data, function(d) { return d.date; }).map((s) => new Date(s));
   const dayMs = 86400 * 1000,
-        granularity = 2;
+        granularity = 7;
 
   let histoData = [];
 
 
   for(let date = start; date < end; date = new Date(date.getTime() + dayMs * granularity)) {
     let 
-        weekWaveAmp = 10, 
-        slowWaveAmp = weekWaveAmp * 1,
-        baseToRandomRatio = .15,
-        minVotes = weekWaveAmp * baseToRandomRatio,
-        randomMult = weekWaveAmp * (1 - baseToRandomRatio) * Math.random(),
+        weekWaveAmp = 50, 
+        slowWaveAmp = weekWaveAmp * .25,
+        randomWaveAmp = weekWaveAmp * .5,
+        baseToRandomRatio = .75,
+
+        minVotes = randomWaveAmp * baseToRandomRatio,
+        randomMult = (1 - baseToRandomRatio) * Math.random(),
         range = (end - start) / (dayMs),
         weekWaveDays = 7,
         weekWavePeriod = (range / weekWaveDays),
         slowWaveDays = range * 3,
         slowWavePeriod = (range / slowWaveDays),
         alpha = (date - start) / (end - start),
-        randomWave = randomMult * Math.random() * (Math.sin(Math.PI * weekWavePeriod)),
+
+        randomWave = randomWaveAmp * randomMult * (Math.sin(Math.PI * weekWavePeriod)),
         weekWave = weekWaveAmp * Math.abs(Math.sin(alpha * Math.PI * weekWavePeriod)),
         slowWave = slowWaveAmp * Math.abs(Math.sin(alpha * Math.PI * slowWavePeriod))
         ;
@@ -130,7 +133,7 @@ d3.tsv("likes.tsv", function(error, data) {
       yh = d3.scaleLinear().rangeRound([height, 0]);
 
   xh.domain([0, histoData.length]);
-  yh.domain([0, d3.max(histoData, function(d) { return d * 0 + 50; })]);
+  yh.domain([0, d3.max(histoData, function(d) { return Math.max(d * 3, 100); })]);
 
   let yAxisRight = d3.axisRight(yh);
 
