@@ -1,4 +1,4 @@
-
+const tickSize = 8;
 const unit = 16,
     margin = {top: unit * 3, right: unit * 3, bottom: unit *3, left: unit * 3},
     svgWidth = 640,
@@ -13,8 +13,11 @@ let svg = d3.select("body>.main").append("svg")
   .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 let graph = svg.append("g");
-
-
+let color = d3.scaleOrdinal(d3.schemePaired);
+let y = d3.scaleLinear().range([height, 0]);
+let x = d3.scaleTime().range([0, width]);
+let dots;
+let yleft;
 
 function parse(data) {
   let byDate = {};
@@ -104,7 +107,7 @@ let ui = function(drawUI, dataRange, rerender) {
         .attr("class", "track-overlay")
         .call(d3.drag()
             .on("start.interrupt", function() { slider.interrupt(); })
-            .on("start drag", function() { hue(x.invert(d3.event.x)); }));
+            .on("start drag", function() { zoomY(x.invert(d3.event.x)); }));
 
     slider.insert("g", ".track-overlay")
         .attr("class", "ticks")
@@ -120,30 +123,26 @@ let ui = function(drawUI, dataRange, rerender) {
         .attr("class", "handle")
         .attr("r", 5);
 
-    // slider.transition() // Gratuitous intro!
-    //     .duration(750)
-    //     .tween("hue", function() {
-    //       var i = d3.interpolate(0, 70);
-    //       return function(t) { hue(i(t)); };
-    //     });
+    slider.transition() // Gratuitous intro!
+        .duration(1000)
+        .ease(d3.easeExpOut)
+        .tween("zoomY", function() {
+          var i = d3.interpolate(.65, .1);
+          return function(t) { zoomY(i(t)); };
+        });
 
-    function hue(h) {
+    function zoomY(h) {
       handle.attr("cx", x(h));
-      console.log(h);
       let [a, b] = dataRange;
-      graph.selectAll('*').remove();
-      rerender([(1 - h) * a, b + (1 - b) * h]);
+      y.domain([(1 - h) * a, b + (1 - b) * h]);
+      dots.attr("cy", function(d) { return y(d.value); });
+      yleft.call(d3.axisLeft(y).tickSize(tickSize, 0));
     }  
   }
 }
 
 function render(data, histoData, yDomain) {
-  const tickSize = 8;
-
-  let color = d3.scaleOrdinal(d3.schemePaired);
-  let x = d3.scaleTime().range([0, width]),
-      y = d3.scaleLinear().range([height, 0]),
-      xHisto = d3.scaleLinear().range([0, width]),
+   let xHisto = d3.scaleLinear().range([0, width]),
       yh = d3.scaleLinear().range([height, 0]),
       xAxis = d3.axisBottom(x).scale(x).tickSize(tickSize, 0).tickFormat(d3.timeFormat("%m %Y")),
       yAxis = d3.axisLeft(y).tickSize(tickSize, 0),
@@ -151,10 +150,7 @@ function render(data, histoData, yDomain) {
 
   x.domain(d3.extent(data, (d) => d.date));
   y.domain(yDomain);
-  // y.domain([0, 1]);
-  // y.domain([.35, .65]);
   xHisto.domain([0, histoData.length]);
-  // yh.domain([0, d3.max(histoData, (d) => d)]);
   yh.domain([0, 100]);
 
   // draw x axis
@@ -166,9 +162,10 @@ function render(data, histoData, yDomain) {
 
   // draw y axis left
   const yAxisOffsetX = - unit;
-  graph.append("g")
-      .attr("class", "y axis")
-      .call(yAxis)
+  yleft = graph.append("g")
+      .attr("class", "y axis");
+
+  yleft.call(yAxis)
       .attr("transform", "translate(" + yAxisOffsetX + ", 0)")
     .append("text")
       .attr("class", "label-y--left")
@@ -203,18 +200,20 @@ function render(data, histoData, yDomain) {
       .attr("height", function(d) { return height - yh(d); });
 
   // draw scatter plot
-  graph.append("g")
+  dots = graph.append("g")
       .attr("class", "scatter-plot")
-    .selectAll(".dot")
+      .selectAll(".dot")
       .data(data)
-    .enter().append("circle")
+      .enter()
+      .append("circle")
       .attr("class", (d) => `dot dot--${d.page}`)
       .attr("r", d => d.page === "Average" ? 5.5 : 2.1)
       .attr("cx", function(d) { return x(d.date); })
       .attr("data", (d) => d.page)
-      .attr("cy", function(d) { return y(d.value); })
       .style("opacity", (d) => d.page === "Average" ? "1" : "1")
-      .style("fill", function(d) { return  d.page === "Average" ? "#fff" : color(d.page); });
+      .style("fill", function(d) { return  d.page === "Average" ? "#fff" : color(d.page); })
+      .attr("cy", function(d) { return y(d.value); })
+      ;
 
   // draw legend
   let legendColumnWidth = 72;
@@ -235,7 +234,6 @@ function render(data, histoData, yDomain) {
     .attr("x", 8)
     .attr("y", 0)
     .attr("dy", ".35em")
-    // .style("text-anchor", "end")
     .text((d) => d);
 
   legend.nodes().forEach(function(node, i) {
@@ -267,17 +265,11 @@ d3.tsv("likes.tsv", function(error, data) {
   if (error) throw error;
 
   parse(data);
+  globalData = data;
   let histoData = simulateHistogram(data);
   let dataRange = d3.extent(data, (d) => d.value);
   render(data, histoData, dataRange);
   ui(1, dataRange, function(yDomain){
     render(data, histoData, yDomain);
   });
-
-    // .attr("transform", function(d, i) {
-    //   let that = d;
-      
-    //   return "translate(" + d.getComputedTextLength() + 16 + ", " + -unit + ")"
-    // })
-    ;
 });
