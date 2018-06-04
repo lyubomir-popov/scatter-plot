@@ -81,7 +81,7 @@ d3.tsv("likes.tsv", function(error, data) {
   // generate histogram csv
   let [start, end] = d3.extent(data, function(d) { return d.date; }).map((s) => new Date(s));
   const dayMs = 86400 * 1000,
-        granularity = 7;
+        granularity = 1;
 
   let histoData = [];
 
@@ -210,7 +210,7 @@ d3.tsv("likes.tsv", function(error, data) {
       .style("fill", function(d) { return  d.page === 'Average' ? '#fff' : color(d.page); });
 
   // draw legend
-  let legendColumnWidth = 60;
+  let legendColumnWidth = 72;
   let legend = svg.selectAll(".legend")
       .data(color.domain())
     .enter().append("g")
@@ -218,13 +218,13 @@ d3.tsv("likes.tsv", function(error, data) {
       .attr("transform", (d, i) => "translate(" + legendColumnWidth * i + ", " + -unit + ")" );
 
   legend.append("circle")
-      .attr("cx", 16)
+      .attr("cx", 0)
       .attr("r", d => d.page === 'Average' ? 5 : 2)
       .attr("r", 3)
       .style("fill", color);
 
   legend.append("text")
-      .attr("x", 24)
+      .attr("x", 8)
       .attr("y", 0)
       .attr("dy", ".35em")
       // .style("text-anchor", "end")
