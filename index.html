@@ -81,7 +81,7 @@ d3.tsv("likes.tsv", function(error, data) {
   // generate histogram csv
   let [start, end] = d3.extent(data, function(d) { return d.date; }).map((s) => new Date(s));
   const dayMs = 86400 * 1000,
-        granularity = 1;
+        granularity = 7;
 
   let histoData = [];
 
