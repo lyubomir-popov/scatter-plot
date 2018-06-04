@@ -32,7 +32,7 @@
   }
 
   .scatter-plot.single-plot *:not(.current) {
-    opacity: .1 !important;
+    opacity: .05 !important;
   }
 
 	.dot {

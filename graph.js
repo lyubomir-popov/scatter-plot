@@ -207,7 +207,7 @@ function render(data, histoData, yDomain) {
       .enter()
       .append("circle")
       .attr("class", (d) => `dot dot--${d.page}`)
-      .attr("r", d => d.page === "Average" ? 5.5 : 2.1)
+      .attr("r", d => d.page === "Average" ? 5 : 3)
       .attr("cx", function(d) { return x(d.date); })
       .attr("data", (d) => d.page)
       .style("opacity", (d) => d.page === "Average" ? "1" : "1")
