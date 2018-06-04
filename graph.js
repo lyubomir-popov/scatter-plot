@@ -127,7 +127,7 @@ let ui = function(drawUI, dataRange, rerender) {
         .duration(1000)
         .ease(d3.easeExpOut)
         .tween("zoomY", function() {
-          var i = d3.interpolate(.2, .1);
+          var i = d3.interpolate(.3, .2);
           return function(t) { zoomY(i(t)); };
         });
 

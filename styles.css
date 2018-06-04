@@ -61,7 +61,7 @@
 .track {
   stroke: #fff;
   stroke-opacity: 0.3;
-  stroke-width: 3px;
+  stroke-width: 1px;
 }
 
 .track-inset {
