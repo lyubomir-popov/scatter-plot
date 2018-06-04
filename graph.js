@@ -6,6 +6,16 @@ const unit = 16,
     width = 640 - margin.left - margin.right,
     height = 320 - margin.top - margin.bottom;
 
+// setup svg
+let svg = d3.select("body>.main").append("svg")
+    .attr("width", svgWidth)
+    .attr("height", svgHeight)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+let graph = svg.append("g");
+
+
+
 function parse(data) {
   let byDate = {};
 
@@ -70,15 +80,64 @@ function simulateHistogram(data) {
   }
   return histoData;  
 }
+ 
+let ui = function(drawUI, dataRange, rerender) {
+  if(drawUI) {
+    // add slider for y scale
+    let sliderPos = height + margin.bottom * 2;
+    let slider = svg.append("g")
+      .attr("class", "slider")
+      .attr("transform", "translate(" + 0 + "," + sliderPos + ")");
 
-function render(data, histoData) {
-    // setup svg
-  let svg = d3.select("body>.main").append("svg")
-      .attr("width", svgWidth)
-      .attr("height", svgHeight)
-    .append("g")
-      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    let x = d3.scaleLinear()
+        .domain([0, 1])
+        .range([0, width])
+        .clamp(true);
 
+    slider.append("line")
+        .attr("class", "track")
+        .attr("x1", x.range()[0])
+        .attr("x2", x.range()[1])
+      .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+        .attr("class", "track-inset")
+      .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+        .attr("class", "track-overlay")
+        .call(d3.drag()
+            .on("start.interrupt", function() { slider.interrupt(); })
+            .on("start drag", function() { hue(x.invert(d3.event.x)); }));
+
+    slider.insert("g", ".track-overlay")
+        .attr("class", "ticks")
+        .attr("transform", "translate(0," + 18 + ")")
+      .selectAll("text")
+      .data(x.ticks(5))
+      .enter().append("text")
+        .attr("x", x)
+        .attr("text-anchor", "middle")
+        .text(function(d) { return d; });
+
+    var handle = slider.insert("circle", ".track-overlay")
+        .attr("class", "handle")
+        .attr("r", 5);
+
+    // slider.transition() // Gratuitous intro!
+    //     .duration(750)
+    //     .tween("hue", function() {
+    //       var i = d3.interpolate(0, 70);
+    //       return function(t) { hue(i(t)); };
+    //     });
+
+    function hue(h) {
+      handle.attr("cx", x(h));
+      console.log(h);
+      let [a, b] = dataRange;
+      graph.selectAll('*').remove();
+      rerender([(1 - h) * a, b + (1 - b) * h]);
+    }  
+  }
+}
+
+function render(data, histoData, yDomain) {
   const tickSize = 8;
 
   let color = d3.scaleOrdinal(d3.schemePaired);
@@ -90,24 +149,24 @@ function render(data, histoData) {
       yAxis = d3.axisLeft(y).tickSize(tickSize, 0),
       yAxisRight = d3.axisRight(yh).tickSize(tickSize, 0);
 
-  x.domain(d3.extent(data, (d) => d.date ));
-  y.domain(d3.extent(data, (d) => d.value ));
-  y.domain([0, 1]);
-  y.domain([.35, .65]);
+  x.domain(d3.extent(data, (d) => d.date));
+  y.domain(yDomain);
+  // y.domain([0, 1]);
+  // y.domain([.35, .65]);
   xHisto.domain([0, histoData.length]);
   // yh.domain([0, d3.max(histoData, (d) => d)]);
   yh.domain([0, 100]);
 
   // draw x axis
   const xAxisPos = height + margin.bottom * .35;
-  svg.append("g")
+  graph.append("g")
       .attr("class", "x axis")
       .attr("transform", "translate(0," + xAxisPos + ")")
       .call(xAxis)
 
   // draw y axis left
   const yAxisOffsetX = - unit;
-  svg.append("g")
+  graph.append("g")
       .attr("class", "y axis")
       .call(yAxis)
       .attr("transform", "translate(" + yAxisOffsetX + ", 0)")
@@ -121,7 +180,7 @@ function render(data, histoData) {
 
   // draw y axis right
   const yAxisRightPos = width + unit;
-  svg.append("g")
+  graph.append("g")
       .attr("class", "y axis axis--right")
       .attr("transform", "translate( " + yAxisRightPos + "," + 0 + ")")
       .call(yAxisRight)
@@ -133,7 +192,7 @@ function render(data, histoData) {
       .text("Votes")
 
   // draw histogram
-  svg.append("g").attr("class", "histo")
+  graph.append("g").attr("class", "histo")
     .selectAll(".bar")
     .data(histoData)
     .enter().append("rect")
@@ -144,7 +203,7 @@ function render(data, histoData) {
       .attr("height", function(d) { return height - yh(d); });
 
   // draw scatter plot
-  svg.append("g")
+  graph.append("g")
       .attr("class", "scatter-plot")
     .selectAll(".dot")
       .data(data)
@@ -159,7 +218,7 @@ function render(data, histoData) {
 
   // draw legend
   let legendColumnWidth = 72;
-  let legend = svg.append("g").attr("class", "legend").selectAll(".legend")
+  let legend = graph.append("g").attr("class", "legend").selectAll(".legend")
       .data(color.domain())
     .enter().append("g")
       .attr("class", "legend__item")
@@ -201,75 +260,6 @@ function render(data, histoData) {
         d3.selectAll(".dot").classed("current", false);
       });
   });
-
-
-
-
-  function flash(name, dy) {
-    return function() {
-      d3.select(this).append("text")
-          .attr("class", name)
-          .attr("transform", "translate(" + d3.mouse(this) + ")")
-          .attr("dy", dy)
-          .text(name)
-        .transition()
-          .duration(1500)
-          .style("opacity", 0)
-          .remove();
-    };
-  }
-
- 
-  let ui = function(drawUI) {
-    if(drawUI) {
-      // add slider for y scale
-      let sliderPos = height + margin.bottom * 2;
-      let slider = svg.append("g")
-        .attr("class", "slider")
-        .attr("transform", "translate(" + 0 + "," + sliderPos + ")");
-
-      slider.append("line")
-          .attr("class", "track")
-          .attr("x1", y.range()[0])
-          .attr("x2", y.range()[1])
-        .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
-          .attr("class", "track-inset")
-        .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
-          .attr("class", "track-overlay")
-          .call(d3.drag()
-              .on("start.interrupt", function() { slider.interrupt(); })
-              .on("start drag", function() { hue(x.invert(d3.event.x)); }));
-
-      slider.insert("g", ".track-overlay")
-          .attr("class", "ticks")
-          .attr("transform", "translate(0," + 18 + ")")
-        .selectAll("text")
-        .data(x.ticks(5))
-        .enter().append("text")
-          .attr("x", x)
-          .attr("text-anchor", "middle")
-          .text(function(d) { return d; });
-
-      var handle = slider.insert("circle", ".track-overlay")
-          .attr("class", "handle")
-          .attr("r", 5);
-
-      slider.transition() // Gratuitous intro!
-          .duration(750)
-          .tween("hue", function() {
-            var i = d3.interpolate(0, 70);
-            return function(t) { hue(i(t)); };
-          });
-
-      function hue(h) {
-        handle.attr("cx", x(h));
-        // svg.style("background-color", d3.hsl(h, 0.8, 0.8));
-      }  
-    }
-  }
-  ui(0);
-
-  let bbox = legend.node().getBBox();
 }
 
 // scatter plot
@@ -278,8 +268,11 @@ d3.tsv("likes.tsv", function(error, data) {
 
   parse(data);
   let histoData = simulateHistogram(data);
-  render(data, histoData);
-
+  let dataRange = d3.extent(data, (d) => d.value);
+  render(data, histoData, dataRange);
+  ui(1, dataRange, function(yDomain){
+    render(data, histoData, yDomain);
+  });
 
     // .attr("transform", function(d, i) {
     //   let that = d;

@@ -59,7 +59,7 @@
 /* slider from https://bl.ocks.org/mbostock/6452972 */
 
 .track {
-  stroke: #000;
+  stroke: #fff;
   stroke-opacity: 0.3;
   stroke-width: 3px;
 }
