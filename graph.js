@@ -50,7 +50,7 @@ function render(data, histoData, yDomain) {
     .append("text")
       .attr("class", "label-y--left")
       .attr("transform", "rotate(-90)")
-      .attr("y", -4)
+      .attr("y", -6)
       .attr("dy", unit)
       .style("text-anchor", "end")
       .text("Happy / Unhappy");
@@ -64,7 +64,7 @@ function render(data, histoData, yDomain) {
     .append("text")
       .attr("class", "label label-y--right")
       .attr("transform", "rotate(90)")
-      .attr("y", -4)
+      .attr("y", -6)
       .attr("dy", "1.5em")
       .text("Feedback per week");
 
