@@ -53,7 +53,7 @@ function render(data, histoData, yDomain) {
       .attr("y", -4)
       .attr("dy", unit)
       .style("text-anchor", "end")
-      .text("Value");
+      .text("Happy / Unhappy");
 
   // draw y axis right
   const yAxisRightPos = width + unit;
@@ -66,7 +66,7 @@ function render(data, histoData, yDomain) {
       .attr("transform", "rotate(90)")
       .attr("y", -4)
       .attr("dy", "1.5em")
-      .text("Votes");
+      .text("Feedback per week");
 
   // draw histogram
   graph.append("g").attr("class", "histo")
